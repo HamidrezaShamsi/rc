@@ -2,20 +2,25 @@ package com.rc.fpvviewer;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
-import android.media.AudioManager;
-import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.MotionEvent;
-import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-public class MainActivity extends Activity implements SurfaceHolder.Callback {
+import org.videolan.libvlc.IVLCVout;
+import org.videolan.libvlc.LibVLC;
+import org.videolan.libvlc.Media;
+import org.videolan.libvlc.MediaPlayer;
+
+import java.util.ArrayList;
+
+public class MainActivity extends Activity {
     private static final String PREFS = "fpv_viewer_prefs";
     private static final String KEY_URL = "stream_url";
     private static final String DEFAULT_URL = "udp://@:5600";
@@ -25,10 +30,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private EditText urlInput;
     private Button connectButton;
 
+    private LibVLC libVLC;
     private MediaPlayer mediaPlayer;
-    private SurfaceHolder surfaceHolder;
-    private boolean surfaceReady = false;
-    private String pendingUrl = null;
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final Runnable hideControls = new Runnable() {
         @Override
@@ -59,49 +62,50 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     return;
                 }
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_URL, url).apply();
-                pendingUrl = url;
-                tryStartPlayback();
+                startPlayback(url);
                 scheduleControlsHide();
             }
         });
 
-        surfaceHolder = surfaceView.getHolder();
-        surfaceHolder.addCallback(this);
-        initializePlayer();
+        ArrayList<String> options = new ArrayList<String>();
+        options.add("--network-caching=50");
+        options.add("--live-caching=50");
+        options.add("--clock-jitter=0");
+        options.add("--clock-synchro=0");
+        options.add("--no-drop-late-frames");
+        options.add("--no-skip-frames");
+        libVLC = new LibVLC(this, options);
+        mediaPlayer = new MediaPlayer(libVLC);
 
-        pendingUrl = urlInput.getText().toString().trim();
-        tryStartPlayback();
+        IVLCVout vout = mediaPlayer.getVLCVout();
+        vout.setVideoView(surfaceView);
+        vout.attachViews();
+
+        startPlayback(urlInput.getText().toString().trim());
         enterImmersiveMode();
         scheduleControlsHide();
     }
 
-    private void initializePlayer() {
-        mediaPlayer = new MediaPlayer();
-        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
-                mp.start();
-            }
-        });
-        mediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {
-            @Override
-            public boolean onError(MediaPlayer mp, int what, int extra) {
-                Toast.makeText(MainActivity.this, "Playback error (" + what + ", " + extra + ")", Toast.LENGTH_SHORT).show();
-                return true;
-            }
-        });
-    }
-
-    private void tryStartPlayback() {
-        if (!surfaceReady || pendingUrl == null || pendingUrl.isEmpty()) {
+    private void startPlayback(String url) {
+        if (url == null || url.isEmpty()) {
             return;
         }
         try {
-            mediaPlayer.reset();
-            mediaPlayer.setDisplay(surfaceHolder);
-            mediaPlayer.setDataSource(pendingUrl);
-            mediaPlayer.prepareAsync();
+            mediaPlayer.stop();
+        } catch (Exception ignored) {
+            // First playback may have nothing to stop.
+        }
+        try {
+            Media media = new Media(libVLC, Uri.parse(url));
+            media.setHWDecoderEnabled(true, false);
+            media.addOption(":network-caching=50");
+            media.addOption(":live-caching=50");
+            media.addOption(":clock-jitter=0");
+            media.addOption(":clock-synchro=0");
+            media.addOption(":fullscreen");
+            mediaPlayer.setMedia(media);
+            media.release();
+            mediaPlayer.play();
         } catch (Exception e) {
             Toast.makeText(this, "Cannot open stream URL", Toast.LENGTH_SHORT).show();
         }
@@ -144,7 +148,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     protected void onPause() {
         super.onPause();
         if (mediaPlayer != null) {
-            mediaPlayer.pause();
+            try {
+                mediaPlayer.pause();
+            } catch (Exception ignored) {
+                // Ignore transient stop/pause errors.
+            }
         }
     }
 
@@ -153,30 +161,19 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         super.onDestroy();
         uiHandler.removeCallbacks(hideControls);
         if (mediaPlayer != null) {
+            IVLCVout vout = mediaPlayer.getVLCVout();
+            vout.detachViews();
             try {
                 mediaPlayer.stop();
-            } catch (IllegalStateException ignored) {
-                // Player may not have started yet.
+            } catch (Exception ignored) {
+                // Ignore when already stopped.
             }
             mediaPlayer.release();
             mediaPlayer = null;
         }
-    }
-
-    @Override
-    public void surfaceCreated(SurfaceHolder holder) {
-        surfaceReady = true;
-        tryStartPlayback();
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        surfaceReady = true;
-        tryStartPlayback();
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-        surfaceReady = false;
+        if (libVLC != null) {
+            libVLC.release();
+            libVLC = null;
+        }
     }
 }
