@@ -1,0 +1,17 @@
+[Unit]
+Description=RC FPV low-latency camera stream
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/rc-fpv-stream
+ExecStart=/usr/local/bin/rc-fpv-stream
+Restart=always
+RestartSec=1
+User=root
+Group=video
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
