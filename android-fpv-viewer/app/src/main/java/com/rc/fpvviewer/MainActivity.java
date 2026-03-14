@@ -68,14 +68,14 @@ public class MainActivity extends Activity {
         });
 
         ArrayList<String> options = new ArrayList<String>();
-        options.add("--network-caching=50");
-        options.add("--live-caching=50");
+        options.add("--network-caching=0");
+        options.add("--live-caching=0");
         options.add("--clock-jitter=0");
         options.add("--clock-synchro=0");
-        options.add("--no-drop-late-frames");
-        options.add("--no-skip-frames");
-        options.add("--demux=h264");
-        options.add("--h264-fps=30");
+        options.add("--drop-late-frames");
+        options.add("--skip-frames");
+        options.add("--file-caching=0");
+        options.add("--disc-caching=0");
         libVLC = new LibVLC(this, options);
         mediaPlayer = new MediaPlayer(libVLC);
 
@@ -100,12 +100,12 @@ public class MainActivity extends Activity {
         try {
             Media media = new Media(libVLC, Uri.parse(url));
             media.setHWDecoderEnabled(true, false);
-            media.addOption(":network-caching=50");
-            media.addOption(":live-caching=50");
+            media.addOption(":network-caching=0");
+            media.addOption(":live-caching=0");
             media.addOption(":clock-jitter=0");
             media.addOption(":clock-synchro=0");
-            media.addOption(":demux=h264");
-            media.addOption(":h264-fps=30");
+            media.addOption(":drop-late-frames");
+            media.addOption(":skip-frames");
             media.addOption(":fullscreen");
             mediaPlayer.setMedia(media);
             media.release();
