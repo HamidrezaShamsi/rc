@@ -76,6 +76,8 @@ public class MainActivity extends Activity {
         options.add("--skip-frames");
         options.add("--file-caching=0");
         options.add("--disc-caching=0");
+        // Raw UDP from rpicam-vid needs explicit H264 demuxing on some Android devices.
+        options.add("--demux=h264");
         libVLC = new LibVLC(this, options);
         mediaPlayer = new MediaPlayer(libVLC);
 
@@ -106,6 +108,7 @@ public class MainActivity extends Activity {
             media.addOption(":clock-synchro=0");
             media.addOption(":drop-late-frames");
             media.addOption(":skip-frames");
+            media.addOption(":demux=h264");
             media.addOption(":fullscreen");
             mediaPlayer.setMedia(media);
             media.release();
