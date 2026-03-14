@@ -23,7 +23,7 @@ import java.util.ArrayList;
 public class MainActivity extends Activity {
     private static final String PREFS = "fpv_viewer_prefs";
     private static final String KEY_URL = "stream_url";
-    private static final String DEFAULT_URL = "udp://@:5600";
+    private static final String DEFAULT_URL = "udp://@239.255.42.99:5600";
 
     private SurfaceView surfaceView;
     private View controls;
@@ -74,6 +74,8 @@ public class MainActivity extends Activity {
         options.add("--clock-synchro=0");
         options.add("--no-drop-late-frames");
         options.add("--no-skip-frames");
+        options.add("--demux=h264");
+        options.add("--h264-fps=30");
         libVLC = new LibVLC(this, options);
         mediaPlayer = new MediaPlayer(libVLC);
 
@@ -102,6 +104,8 @@ public class MainActivity extends Activity {
             media.addOption(":live-caching=50");
             media.addOption(":clock-jitter=0");
             media.addOption(":clock-synchro=0");
+            media.addOption(":demux=h264");
+            media.addOption(":h264-fps=30");
             media.addOption(":fullscreen");
             mediaPlayer.setMedia(media);
             media.release();
