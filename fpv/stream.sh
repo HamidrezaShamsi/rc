@@ -12,11 +12,11 @@ fi
 # mpegts = H.264 in MPEG-TS over UDP (timestamped; best for Android playback).
 # raw = raw H.264 over UDP (legacy).
 : "${STREAM_FORMAT:=mpegts}"
-: "${STREAM_WIDTH:=1920}"
-: "${STREAM_HEIGHT:=1080}"
+: "${STREAM_WIDTH:=1280}"
+: "${STREAM_HEIGHT:=720}"
 : "${STREAM_FPS:=60}"
-: "${STREAM_BITRATE:=8000000}"
-: "${STREAM_INTRA:=30}"
+: "${STREAM_BITRATE:=5000000}"
+: "${STREAM_INTRA:=10}"
 : "${CAMERA_ID:=0}"
 : "${DENOISE:=cdn_off}"
 
