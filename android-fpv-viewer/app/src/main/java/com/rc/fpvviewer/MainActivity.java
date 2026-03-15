@@ -134,7 +134,8 @@ public class MainActivity extends Activity {
         try {
             Uri uri = Uri.parse(url);
             Media media = new Media(libVLC, uri);
-            media.setHWDecoderEnabled(true, false);
+            // Prefer software decode for raw H.264 UDP; HW decode often shows black on some devices.
+            media.setHWDecoderEnabled(false, false);
             media.addOption(":network-caching=0");
             media.addOption(":live-caching=0");
             media.addOption(":clock-jitter=0");
