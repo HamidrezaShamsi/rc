@@ -10,6 +10,8 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
@@ -54,7 +56,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: RC FPV Viewer ${{ steps.version.outputs.version }}
           files: android-fpv-viewer/app/build/outputs/apk/debug/app-debug.apk
-          generate_release_notes: true
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
