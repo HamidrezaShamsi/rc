@@ -16,28 +16,49 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:background="#CC111111"
-        android:orientation="horizontal"
-        android:padding="8dp">
+        android:background="#E6000000"
+        android:orientation="vertical"
+        android:padding="12dp">
 
-        <EditText
-            android:id="@+id/url_input"
-            android:layout_width="0dp"
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="udp://@:5600"
-            android:inputType="textUri"
-            android:maxLines="1"
-            android:singleLine="true"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#FFBBBBBB" />
+            android:text="@string/instruction_listen"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"
+            android:lineSpacingMultiplier="1.2"
+            android:paddingBottom="8dp" />
 
-        <Button
-            android:id="@+id/connect_button"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="Connect" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/url_input"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="udp://@:5600"
+                android:inputType="textUri"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#88AAAAAA"
+                android:minHeight="48dp" />
+
+            <Button
+                android:id="@+id/connect_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:minHeight="48dp"
+                android:minWidth="120dp"
+                android:text="@string/button_start"
+                android:textAllCaps="false" />
+        </LinearLayout>
     </LinearLayout>
 
 </FrameLayout>

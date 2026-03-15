@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RC FPV Viewer</string>
+    <string name="instruction_listen">1. Connect to Pi WiFi (RC-FPV)\n2. Tap Start to listen on port 5600</string>
+    <string name="status_listening">Listening on port 5600…</string>
+    <string name="status_playing">Playing</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_error">No stream</string>
+    <string name="toast_no_stream">No stream yet. Connect to Pi hotspot RC-FPV and ensure Pi is streaming to this phone.</string>
+    <string name="toast_cannot_open">Cannot open stream. Check URL and WiFi.</string>
+    <string name="button_start">Start</string>
+</resources>

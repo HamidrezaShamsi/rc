@@ -11,6 +11,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.videolan.libvlc.LibVLC;
@@ -23,12 +24,14 @@ import java.util.ArrayList;
 public class MainActivity extends Activity {
     private static final String PREFS = "fpv_viewer_prefs";
     private static final String KEY_URL = "stream_url";
-    private static final String DEFAULT_URL = "udp://@239.255.42.99:5600";
+    /** Listen on port 5600 for UDP stream the Pi sends to this device. */
+    private static final String DEFAULT_URL = "udp://@:5600";
 
     private SurfaceView surfaceView;
     private View controls;
+    private TextView statusText;
     private EditText urlInput;
-    private Button connectButton;
+    private Button startButton;
 
     private LibVLC libVLC;
     private MediaPlayer mediaPlayer;
@@ -47,21 +50,27 @@ public class MainActivity extends Activity {
 
         surfaceView = findViewById(R.id.video_surface);
         controls = findViewById(R.id.controls);
+        statusText = findViewById(R.id.status_text);
         urlInput = findViewById(R.id.url_input);
-        connectButton = findViewById(R.id.connect_button);
+        startButton = findViewById(R.id.connect_button);
 
         SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        urlInput.setText(prefs.getString(KEY_URL, DEFAULT_URL));
+        String saved = prefs.getString(KEY_URL, DEFAULT_URL);
+        urlInput.setText(saved);
+        if (saved.equals(DEFAULT_URL)) {
+            statusText.setText(R.string.instruction_listen);
+        }
 
-        connectButton.setOnClickListener(new View.OnClickListener() {
+        startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String url = urlInput.getText().toString().trim();
                 if (url.isEmpty()) {
-                    Toast.makeText(MainActivity.this, "Enter stream URL", Toast.LENGTH_SHORT).show();
-                    return;
+                    url = DEFAULT_URL;
+                    urlInput.setText(url);
                 }
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_URL, url).apply();
+                statusText.setText(R.string.status_listening);
                 startPlayback(url);
                 scheduleControlsHide();
             }
@@ -76,16 +85,40 @@ public class MainActivity extends Activity {
         options.add("--skip-frames");
         options.add("--file-caching=0");
         options.add("--disc-caching=0");
-        // Raw UDP from rpicam-vid needs explicit H264 demuxing on some Android devices.
         options.add("--demux=h264");
         libVLC = new LibVLC(this, options);
         mediaPlayer = new MediaPlayer(libVLC);
+
+        mediaPlayer.setEventListener(new MediaPlayer.EventListener() {
+            @Override
+            public void onEvent(MediaPlayer.Event event) {
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        switch (event.type) {
+                            case MediaPlayer.Event.Playing:
+                                statusText.setText(R.string.status_playing);
+                                break;
+                            case MediaPlayer.Event.Stopped:
+                            case MediaPlayer.Event.EndReached:
+                                statusText.setText(R.string.status_stopped);
+                                break;
+                            case MediaPlayer.Event.EncounteredError:
+                                statusText.setText(R.string.status_error);
+                                Toast.makeText(MainActivity.this, R.string.toast_no_stream, Toast.LENGTH_LONG).show();
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                });
+            }
+        });
 
         IVLCVout vout = mediaPlayer.getVLCVout();
         vout.setVideoView(surfaceView);
         vout.attachViews();
 
-        startPlayback(urlInput.getText().toString().trim());
         enterImmersiveMode();
         scheduleControlsHide();
     }
@@ -97,10 +130,10 @@ public class MainActivity extends Activity {
         try {
             mediaPlayer.stop();
         } catch (Exception ignored) {
-            // First playback may have nothing to stop.
         }
         try {
-            Media media = new Media(libVLC, Uri.parse(url));
+            Uri uri = Uri.parse(url);
+            Media media = new Media(libVLC, uri);
             media.setHWDecoderEnabled(true, false);
             media.addOption(":network-caching=0");
             media.addOption(":live-caching=0");
@@ -114,7 +147,8 @@ public class MainActivity extends Activity {
             media.release();
             mediaPlayer.play();
         } catch (Exception e) {
-            Toast.makeText(this, "Cannot open stream URL", Toast.LENGTH_SHORT).show();
+            statusText.setText(R.string.status_error);
+            Toast.makeText(this, R.string.toast_cannot_open, Toast.LENGTH_LONG).show();
         }
     }
 
