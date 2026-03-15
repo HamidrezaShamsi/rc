@@ -88,7 +88,7 @@ public class MainActivity extends Activity {
     private double fpsEstimate = 0.0;
     private long pingMs = -1;
 
-    private int receiverCacheMs = 300;
+    private int receiverCacheMs = 10;
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService netExecutor = Executors.newSingleThreadExecutor();
@@ -253,8 +253,8 @@ public class MainActivity extends Activity {
         intraSeek.setMax(30 - 1);
         intraSeek.setProgress(10 - 1);
         // Receiver cache 80..500ms
-        cacheSeek.setMax(500 - 80);
-        cacheSeek.setProgress(Math.max(80, Math.min(500, receiverCacheMs)) - 80);
+        cacheSeek.setMax(200);
+        cacheSeek.setProgress(Math.max(0, Math.min(200, receiverCacheMs)));
         // MPEG-TS default true
         mpegtsSwitch.setChecked(true);
 
@@ -291,8 +291,6 @@ public class MainActivity extends Activity {
 
     private ArrayList<String> buildVlcOptions(int cacheMs) {
         ArrayList<String> options = new ArrayList<String>();
-        options.add("--network-caching=" + cacheMs);
-        options.add("--live-caching=" + cacheMs);
         options.add("--clock-jitter=0");
         options.add("--clock-synchro=0");
         options.add("--drop-late-frames");
@@ -521,7 +519,7 @@ public class MainActivity extends Activity {
     }
 
     private void applySettingsFromPanel() {
-        receiverCacheMs = 80 + cacheSeek.getProgress();
+        receiverCacheMs = cacheSeek.getProgress();
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_CACHE_MS, receiverCacheMs).apply();
 
         if (!userStopped && currentPlaybackUrl != null) {
@@ -606,7 +604,7 @@ public class MainActivity extends Activity {
         int fps = 24 + fpsSeek.getProgress();
         int bitrate = 2 + bitrateSeek.getProgress();
         int intra = 1 + intraSeek.getProgress();
-        int cache = 80 + cacheSeek.getProgress();
+        int cache = cacheSeek.getProgress();
 
         fpsValue.setText(getString(R.string.setting_fps_value, fps));
         bitrateValue.setText(getString(R.string.setting_bitrate_value, bitrate));
