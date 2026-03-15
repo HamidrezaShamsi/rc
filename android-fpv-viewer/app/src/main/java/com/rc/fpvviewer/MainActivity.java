@@ -35,6 +35,8 @@ public class MainActivity extends Activity {
 
     private LibVLC libVLC;
     private MediaPlayer mediaPlayer;
+    /** Current stream URL; used to reconnect when VLC fires EndReached (live UDP has no real end). */
+    private String currentPlaybackUrl = null;
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final Runnable hideControls = new Runnable() {
         @Override
@@ -76,10 +78,9 @@ public class MainActivity extends Activity {
             }
         });
 
-        // Small cache (100 ms) so VLC doesn't treat first UDP gap as end-of-stream (which causes one-frame-then-stop).
         ArrayList<String> options = new ArrayList<String>();
-        options.add("--network-caching=100");
-        options.add("--live-caching=100");
+        options.add("--network-caching=300");
+        options.add("--live-caching=300");
         options.add("--clock-jitter=0");
         options.add("--clock-synchro=0");
         options.add("--drop-late-frames");
@@ -104,9 +105,21 @@ public class MainActivity extends Activity {
                                 statusText.setText(R.string.status_stopped);
                                 break;
                             case MediaPlayer.Event.EndReached:
-                                // Live UDP has no real end; VLC often fires this after one frame. Resume playback.
-                                if (mediaPlayer != null) {
+                                // Live UDP: VLC often fires EndReached after one frame. Reconnect by setting media again and play().
+                                if (mediaPlayer != null && currentPlaybackUrl != null) {
                                     try {
+                                        Media media = new Media(libVLC, Uri.parse(currentPlaybackUrl));
+                                        media.setHWDecoderEnabled(false, false);
+                                        media.addOption(":network-caching=300");
+                                        media.addOption(":live-caching=300");
+                                        media.addOption(":clock-jitter=0");
+                                        media.addOption(":clock-synchro=0");
+                                        media.addOption(":drop-late-frames");
+                                        media.addOption(":skip-frames");
+                                        media.addOption(":demux=h264");
+                                        media.addOption(":fullscreen");
+                                        mediaPlayer.setMedia(media);
+                                        media.release();
                                         mediaPlayer.play();
                                     } catch (Exception ignored) {
                                         statusText.setText(R.string.status_stopped);
@@ -139,6 +152,7 @@ public class MainActivity extends Activity {
         if (url == null || url.isEmpty()) {
             return;
         }
+        currentPlaybackUrl = url;
         try {
             mediaPlayer.stop();
         } catch (Exception ignored) {
@@ -146,10 +160,9 @@ public class MainActivity extends Activity {
         try {
             Uri uri = Uri.parse(url);
             Media media = new Media(libVLC, uri);
-            // Prefer software decode for raw H.264 UDP; HW decode often shows black on some devices.
             media.setHWDecoderEnabled(false, false);
-            media.addOption(":network-caching=100");
-            media.addOption(":live-caching=100");
+            media.addOption(":network-caching=300");
+            media.addOption(":live-caching=300");
             media.addOption(":clock-jitter=0");
             media.addOption(":clock-synchro=0");
             media.addOption(":drop-late-frames");
@@ -160,6 +173,7 @@ public class MainActivity extends Activity {
             media.release();
             mediaPlayer.play();
         } catch (Exception e) {
+            currentPlaybackUrl = null;
             statusText.setText(R.string.status_error);
             Toast.makeText(this, R.string.toast_cannot_open, Toast.LENGTH_LONG).show();
         }

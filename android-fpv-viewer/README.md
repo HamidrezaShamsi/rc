@@ -22,6 +22,10 @@ APK output path:
 
 ## Install to phone
 
+From the repo root (after downloading the artifact zip from Actions, unzip it first):
+
 ```bash
 adb install -r android-fpv-viewer/build-artifacts/app-debug.apk
 ```
+
+Or unzip the artifact anywhere and run: `adb install -r /path/to/app-debug.apk`
