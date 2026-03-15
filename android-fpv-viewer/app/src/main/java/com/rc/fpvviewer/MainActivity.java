@@ -17,6 +17,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -61,7 +62,7 @@ public class MainActivity extends Activity {
     private Button settingsButton;
     private Switch fillModeSwitch;
 
-    private LinearLayout settingsPanel;
+    private ScrollView settingsPanel;
     private SeekBar fpsSeek;
     private SeekBar bitrateSeek;
     private SeekBar intraSeek;
@@ -545,7 +546,7 @@ public class MainActivity extends Activity {
                         applyPiSettingsButton.setEnabled(true);
                         applyPiSettingsButton.setText(R.string.button_apply_pi);
                         if (ok) {
-                            Toast.makeText(MainActivity.this, R.string.toast_pi_applied, Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MainActivity.this, getString(R.string.toast_pi_applied_detail, fps, bitrateMbps, intra), Toast.LENGTH_LONG).show();
                         } else {
                             Toast.makeText(MainActivity.this, R.string.toast_pi_apply_failed, Toast.LENGTH_LONG).show();
                         }
@@ -628,21 +629,24 @@ public class MainActivity extends Activity {
         if (mediaPlayer == null) {
             return;
         }
-
-        boolean fillMode = fillModeSwitch.isChecked();
-        if (fillMode) {
-            int width = getWindow().getDecorView().getWidth();
-            int height = getWindow().getDecorView().getHeight();
-            if (width <= 0 || height <= 0) {
-                DisplayMetrics dm = getResources().getDisplayMetrics();
-                width = dm.widthPixels;
-                height = dm.heightPixels;
+        // Fill = scale video to fill entire screen (any stream resolution). Fit = fit with possible bars.
+        try {
+            if (fillModeSwitch.isChecked()) {
+                mediaPlayer.setScaleType(MediaPlayer.ScaleType.SURFACE_FILL);
+            } else {
+                mediaPlayer.setScaleType(MediaPlayer.ScaleType.SURFACE_FIT_SCREEN);
             }
-            mediaPlayer.setScale(0f);
-            mediaPlayer.setAspectRatio(width + ":" + height);
-        } else {
-            mediaPlayer.setAspectRatio(null);
-            mediaPlayer.setScale(0f);
+        } catch (Exception ignored) {
+            // Fallback: force display aspect to screen so lower-res streams still fill
+            int w = surfaceView.getWidth() > 0 ? surfaceView.getWidth() : getResources().getDisplayMetrics().widthPixels;
+            int h = surfaceView.getHeight() > 0 ? surfaceView.getHeight() : getResources().getDisplayMetrics().heightPixels;
+            if (w > 0 && h > 0 && fillModeSwitch.isChecked()) {
+                mediaPlayer.setScale(0f);
+                mediaPlayer.setAspectRatio(w + ":" + h);
+            } else {
+                mediaPlayer.setAspectRatio(null);
+                mediaPlayer.setScale(0f);
+            }
         }
     }
 

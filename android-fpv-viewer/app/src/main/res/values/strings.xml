@@ -13,6 +13,7 @@
     <string name="toast_no_stream">No video packets yet. Check Pi stream target and WiFi.</string>
     <string name="toast_cannot_open">Cannot open stream URL. Check format and WiFi.</string>
     <string name="toast_pi_applied">Applied on Pi. Stream restarting…</string>
+    <string name="toast_pi_applied_detail">Pi updated: %1$d fps, %2$d Mbps, intra %3$d. Stream restarting.</string>
     <string name="toast_pi_apply_failed">Cannot apply on Pi. Ensure control service is running at 10.42.0.1:8080.</string>
 
     <string name="button_start">Start</string>
