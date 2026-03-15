@@ -629,24 +629,18 @@ public class MainActivity extends Activity {
         if (mediaPlayer == null) {
             return;
         }
-        // Fill = scale video to fill entire screen (any stream resolution). Fit = fit with possible bars.
-        try {
-            if (fillModeSwitch.isChecked()) {
-                mediaPlayer.setScaleType(MediaPlayer.ScaleType.SURFACE_FILL);
-            } else {
-                mediaPlayer.setScaleType(MediaPlayer.ScaleType.SURFACE_FIT_SCREEN);
-            }
-        } catch (Exception ignored) {
-            // Fallback: force display aspect to screen so lower-res streams still fill
-            int w = surfaceView.getWidth() > 0 ? surfaceView.getWidth() : getResources().getDisplayMetrics().widthPixels;
-            int h = surfaceView.getHeight() > 0 ? surfaceView.getHeight() : getResources().getDisplayMetrics().heightPixels;
-            if (w > 0 && h > 0 && fillModeSwitch.isChecked()) {
-                mediaPlayer.setScale(0f);
-                mediaPlayer.setAspectRatio(w + ":" + h);
-            } else {
-                mediaPlayer.setAspectRatio(null);
-                mediaPlayer.setScale(0f);
-            }
+        int w = surfaceView.getWidth() > 0 ? surfaceView.getWidth() : getResources().getDisplayMetrics().widthPixels;
+        int h = surfaceView.getHeight() > 0 ? surfaceView.getHeight() : getResources().getDisplayMetrics().heightPixels;
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        // Fill = force display aspect to screen so any stream resolution scales to full screen. Fit = natural aspect (may have bars).
+        if (fillModeSwitch.isChecked()) {
+            mediaPlayer.setScale(0f);
+            mediaPlayer.setAspectRatio(w + ":" + h);
+        } else {
+            mediaPlayer.setAspectRatio(null);
+            mediaPlayer.setScale(0f);
         }
     }
 

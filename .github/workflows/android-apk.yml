@@ -30,13 +30,15 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: "8.7"
+        run: |
+          GRADLE_VER=8.7
+          wget -q "https://services.gradle.org/distributions/gradle-${GRADLE_VER}-bin.zip" -O /tmp/gradle.zip
+          unzip -q -d /tmp /tmp/gradle.zip
+          echo "GRADLE_HOME=/tmp/gradle-${GRADLE_VER}" >> $GITHUB_ENV
+          echo "/tmp/gradle-${GRADLE_VER}/bin" >> $GITHUB_PATH
 
       - name: Build debug APK
-        working-directory: android-fpv-viewer
-        run: gradle assembleDebug
+        run: cd android-fpv-viewer && gradle assembleDebug --no-daemon
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
