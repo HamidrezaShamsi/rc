@@ -7,11 +7,14 @@ on:
       - "android-fpv-viewer/**"
       - ".github/workflows/android-apk.yml"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -50,6 +53,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=apk-$VERSION-${{ github.run_number }}" >> $GITHUB_OUTPUT
 
+      # Needs Settings → Actions → General → Workflow permissions: Read and write
       - name: Create Release and upload APK
         uses: softprops/action-gh-release@v2
         with:
