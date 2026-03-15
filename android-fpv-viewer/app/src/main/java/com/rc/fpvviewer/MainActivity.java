@@ -76,9 +76,10 @@ public class MainActivity extends Activity {
             }
         });
 
+        // Small cache (100 ms) so VLC doesn't treat first UDP gap as end-of-stream (which causes one-frame-then-stop).
         ArrayList<String> options = new ArrayList<String>();
-        options.add("--network-caching=0");
-        options.add("--live-caching=0");
+        options.add("--network-caching=100");
+        options.add("--live-caching=100");
         options.add("--clock-jitter=0");
         options.add("--clock-synchro=0");
         options.add("--drop-late-frames");
@@ -100,8 +101,19 @@ public class MainActivity extends Activity {
                                 statusText.setText(R.string.status_playing);
                                 break;
                             case MediaPlayer.Event.Stopped:
-                            case MediaPlayer.Event.EndReached:
                                 statusText.setText(R.string.status_stopped);
+                                break;
+                            case MediaPlayer.Event.EndReached:
+                                // Live UDP has no real end; VLC often fires this after one frame. Resume playback.
+                                if (mediaPlayer != null) {
+                                    try {
+                                        mediaPlayer.play();
+                                    } catch (Exception ignored) {
+                                        statusText.setText(R.string.status_stopped);
+                                    }
+                                } else {
+                                    statusText.setText(R.string.status_stopped);
+                                }
                                 break;
                             case MediaPlayer.Event.EncounteredError:
                                 statusText.setText(R.string.status_error);
@@ -136,8 +148,8 @@ public class MainActivity extends Activity {
             Media media = new Media(libVLC, uri);
             // Prefer software decode for raw H.264 UDP; HW decode often shows black on some devices.
             media.setHWDecoderEnabled(false, false);
-            media.addOption(":network-caching=0");
-            media.addOption(":live-caching=0");
+            media.addOption(":network-caching=100");
+            media.addOption(":live-caching=100");
             media.addOption(":clock-jitter=0");
             media.addOption(":clock-synchro=0");
             media.addOption(":drop-late-frames");
