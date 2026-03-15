@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RC FPV Viewer</string>
-    <string name="instruction_listen">1. Connect to Pi WiFi (RC-FPV)\n2. Tap Start to listen on port 5600</string>
-    <string name="status_listening">Listening on port 5600…</string>
-    <string name="status_playing">Playing</string>
+    <string name="instruction_listen">Connect phone to RC-FPV WiFi, then tap Start.</string>
+    <string name="status_connecting">Connecting to stream…</string>
+    <string name="status_listening">Listening on UDP 5600…</string>
+    <string name="status_playing">Live video running</string>
+    <string name="status_reconnecting">Stream interrupted. Reconnecting…</string>
     <string name="status_stopped">Stopped</string>
-    <string name="status_error">No stream</string>
-    <string name="toast_no_stream">No stream yet. Connect to Pi hotspot RC-FPV and ensure Pi is streaming to this phone.</string>
-    <string name="toast_cannot_open">Cannot open stream. Check URL and WiFi.</string>
+    <string name="status_error">Stream error</string>
+    <string name="toast_no_stream">No video packets yet. Check Pi stream target IP and hotspot.</string>
+    <string name="toast_cannot_open">Cannot open stream URL. Check format and WiFi.</string>
     <string name="button_start">Start</string>
+    <string name="button_stop">Stop</string>
+    <string name="state_connecting">connecting</string>
+    <string name="state_opening">opening</string>
+    <string name="state_buffering">buffering</string>
+    <string name="state_playing">playing</string>
+    <string name="state_reconnecting">reconnecting</string>
+    <string name="state_stopped">stopped</string>
+    <string name="state_error">error</string>
+    <string name="metrics_placeholder">State: idle | FPS: -- | Ping: -- | Lost: --</string>
+    <string name="metrics_template">State: %1$s | FPS est: %2$s | Ping: %3$s | Lost pics: %4$s</string>
 </resources>

@@ -6,7 +6,7 @@ This folder contains an Android app that opens a full-screen FPV stream on your 
 
 - `udp://@:5600`
 
-On app launch, tap to show controls, edit URL if needed, then press **Connect**.
+On app launch, tap to show controls, keep default `udp://@:5600`, then press **Start**.
 
 ## Build APK with GitHub Actions (recommended)
 

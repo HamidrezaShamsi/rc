@@ -16,7 +16,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:background="#E6000000"
+        android:background="#E0141824"
         android:orientation="vertical"
         android:padding="12dp">
 
@@ -25,39 +25,63 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/instruction_listen"
-            android:textColor="#AAAAAA"
-            android:textSize="14sp"
-            android:lineSpacingMultiplier="1.2"
-            android:paddingBottom="8dp" />
+            android:textColor="#FFFFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/metrics_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/metrics_placeholder"
+            android:textColor="#FFB8C7FF"
+            android:textSize="13sp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <EditText
                 android:id="@+id/url_input"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
+                android:background="#332A3248"
                 android:hint="udp://@:5600"
                 android:inputType="textUri"
                 android:maxLines="1"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
                 android:singleLine="true"
-                android:textColor="#FFFFFF"
-                android:textColorHint="#88AAAAAA"
-                android:minHeight="48dp" />
+                android:textColor="#FFFFFFFF"
+                android:textColorHint="#99C5CEE0" />
 
             <Button
-                android:id="@+id/connect_button"
+                android:id="@+id/start_button"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:minHeight="48dp"
-                android:minWidth="120dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="10dp"
+                android:backgroundTint="#FF2D7CF4"
+                android:minWidth="96dp"
                 android:text="@string/button_start"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                android:textColor="#FFFFFFFF" />
+
+            <Button
+                android:id="@+id/stop_button"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:backgroundTint="#FF424B63"
+                android:enabled="false"
+                android:minWidth="86dp"
+                android:text="@string/button_stop"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFFFF" />
         </LinearLayout>
     </LinearLayout>
 
