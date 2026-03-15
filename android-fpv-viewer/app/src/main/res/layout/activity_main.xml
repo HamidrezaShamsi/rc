@@ -16,7 +16,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:background="#E0141824"
+        android:background="#E0151A2A"
         android:orientation="vertical"
         android:padding="12dp">
 
@@ -41,16 +41,16 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <EditText
                 android:id="@+id/url_input"
                 android:layout_width="0dp"
-                android:layout_height="48dp"
+                android:layout_height="46dp"
                 android:layout_weight="1"
-                android:background="#332A3248"
+                android:background="#402B3552"
                 android:hint="udp://@:5600"
                 android:inputType="textUri"
                 android:maxLines="1"
@@ -63,10 +63,10 @@
             <Button
                 android:id="@+id/start_button"
                 android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:layout_marginStart="10dp"
+                android:layout_height="46dp"
+                android:layout_marginStart="8dp"
                 android:backgroundTint="#FF2D7CF4"
-                android:minWidth="96dp"
+                android:minWidth="84dp"
                 android:text="@string/button_start"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFFFF" />
@@ -74,15 +74,119 @@
             <Button
                 android:id="@+id/stop_button"
                 android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:layout_marginStart="8dp"
-                android:backgroundTint="#FF424B63"
+                android:layout_height="46dp"
+                android:layout_marginStart="6dp"
+                android:backgroundTint="#FF4A556F"
                 android:enabled="false"
-                android:minWidth="86dp"
+                android:minWidth="78dp"
                 android:text="@string/button_stop"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFFFF" />
         </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Switch
+                android:id="@+id/fill_mode_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/toggle_fill_mode"
+                android:textColor="#FFEAF0FF"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/settings_button"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="10dp"
+                android:backgroundTint="#FF23304A"
+                android:text="@string/button_settings"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFFFF" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/settings_panel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="#441E2740"
+            android:orientation="vertical"
+            android:padding="10dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_title"
+                android:textColor="#FFFFFFFF"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/fps_value"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="#FFDAE4FF" />
+            <SeekBar
+                android:id="@+id/fps_seek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/bitrate_value"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFDAE4FF" />
+            <SeekBar
+                android:id="@+id/bitrate_seek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/intra_value"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFDAE4FF" />
+            <SeekBar
+                android:id="@+id/intra_seek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/cache_value"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFDAE4FF" />
+            <SeekBar
+                android:id="@+id/cache_seek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <Switch
+                android:id="@+id/mpegts_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/setting_format_mpegts"
+                android:textColor="#FFFFFFFF" />
+
+            <Button
+                android:id="@+id/apply_pi_button"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:layout_marginTop="10dp"
+                android:backgroundTint="#FF2A8B4B"
+                android:text="@string/button_apply_pi"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFFFF" />
+        </LinearLayout>
+
     </LinearLayout>
 
 </FrameLayout>

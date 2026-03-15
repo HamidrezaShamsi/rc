@@ -10,22 +10,33 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.format.Formatter;
+import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.SeekBar;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONObject;
 import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
 import org.videolan.libvlc.MediaPlayer;
 import org.videolan.libvlc.interfaces.IVLCVout;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.HttpURLConnection;
 import java.net.InetAddress;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -34,7 +45,11 @@ import java.util.concurrent.Executors;
 public class MainActivity extends Activity {
     private static final String PREFS = "fpv_viewer_prefs";
     private static final String KEY_URL = "stream_url";
+    private static final String KEY_FILL_MODE = "fill_mode";
+    private static final String KEY_CACHE_MS = "cache_ms";
+
     private static final String DEFAULT_URL = "udp://@:5600";
+    private static final String PI_CONTROL_URL = "http://10.42.0.1:8080/api/stream-config";
 
     private SurfaceView surfaceView;
     private View controls;
@@ -43,11 +58,26 @@ public class MainActivity extends Activity {
     private EditText urlInput;
     private Button startButton;
     private Button stopButton;
+    private Button settingsButton;
+    private Switch fillModeSwitch;
+
+    private LinearLayout settingsPanel;
+    private SeekBar fpsSeek;
+    private SeekBar bitrateSeek;
+    private SeekBar intraSeek;
+    private SeekBar cacheSeek;
+    private Switch mpegtsSwitch;
+    private TextView fpsValue;
+    private TextView bitrateValue;
+    private TextView intraValue;
+    private TextView cacheValue;
+    private Button applyPiSettingsButton;
 
     private LibVLC libVLC;
     private MediaPlayer mediaPlayer;
+
     private String currentPlaybackUrl;
-    private String currentState = "Idle";
+    private String currentState = "idle";
     private boolean userStopped = true;
     private boolean reconnectPending = false;
     private boolean restartingPlayback = false;
@@ -56,6 +86,8 @@ public class MainActivity extends Activity {
     private long lastDisplayedPictures = -1;
     private double fpsEstimate = 0.0;
     private long pingMs = -1;
+
+    private int receiverCacheMs = 300;
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService netExecutor = Executors.newSingleThreadExecutor();
@@ -96,6 +128,52 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        bindViews();
+
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        String savedUrl = prefs.getString(KEY_URL, DEFAULT_URL);
+        urlInput.setText(savedUrl);
+        receiverCacheMs = prefs.getInt(KEY_CACHE_MS, 300);
+        fillModeSwitch.setChecked(prefs.getBoolean(KEY_FILL_MODE, true));
+
+        statusText.setText(R.string.instruction_listen);
+        setUiState(false);
+
+        initButtons();
+        initSettingsPanel();
+
+        libVLC = new LibVLC(this, buildVlcOptions(receiverCacheMs));
+        mediaPlayer = new MediaPlayer(libVLC);
+        mediaPlayer.setEventListener(new MediaPlayer.EventListener() {
+            @Override
+            public void onEvent(final MediaPlayer.Event event) {
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        handlePlayerEvent(event);
+                    }
+                });
+            }
+        });
+
+        IVLCVout vout = mediaPlayer.getVLCVout();
+        vout.setVideoView(surfaceView);
+        vout.attachViews();
+
+        surfaceView.post(new Runnable() {
+            @Override
+            public void run() {
+                applyVideoLayoutMode();
+            }
+        });
+
+        enterImmersiveMode();
+        uiHandler.post(metricsUpdater);
+        uiHandler.post(pingUpdater);
+        scheduleControlsHide();
+    }
+
+    private void bindViews() {
         surfaceView = findViewById(R.id.video_surface);
         controls = findViewById(R.id.controls);
         statusText = findViewById(R.id.status_text);
@@ -103,13 +181,23 @@ public class MainActivity extends Activity {
         urlInput = findViewById(R.id.url_input);
         startButton = findViewById(R.id.start_button);
         stopButton = findViewById(R.id.stop_button);
+        settingsButton = findViewById(R.id.settings_button);
+        fillModeSwitch = findViewById(R.id.fill_mode_switch);
 
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        String saved = prefs.getString(KEY_URL, DEFAULT_URL);
-        urlInput.setText(saved);
-        statusText.setText(R.string.instruction_listen);
-        setUiState(false);
+        settingsPanel = findViewById(R.id.settings_panel);
+        fpsSeek = findViewById(R.id.fps_seek);
+        bitrateSeek = findViewById(R.id.bitrate_seek);
+        intraSeek = findViewById(R.id.intra_seek);
+        cacheSeek = findViewById(R.id.cache_seek);
+        mpegtsSwitch = findViewById(R.id.mpegts_switch);
+        fpsValue = findViewById(R.id.fps_value);
+        bitrateValue = findViewById(R.id.bitrate_value);
+        intraValue = findViewById(R.id.intra_value);
+        cacheValue = findViewById(R.id.cache_value);
+        applyPiSettingsButton = findViewById(R.id.apply_pi_button);
+    }
 
+    private void initButtons() {
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -132,36 +220,83 @@ public class MainActivity extends Activity {
             }
         });
 
+        settingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean show = settingsPanel.getVisibility() != View.VISIBLE;
+                settingsPanel.setVisibility(show ? View.VISIBLE : View.GONE);
+                settingsButton.setText(show ? R.string.button_hide_settings : R.string.button_settings);
+                if (show) {
+                    scheduleControlsHide();
+                }
+            }
+        });
+
+        fillModeSwitch.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_FILL_MODE, fillModeSwitch.isChecked()).apply();
+                applyVideoLayoutMode();
+            }
+        });
+    }
+
+    private void initSettingsPanel() {
+        // FPS 24..120
+        fpsSeek.setMax(120 - 24);
+        fpsSeek.setProgress(60 - 24);
+        // Bitrate 2..12 Mbps
+        bitrateSeek.setMax(12 - 2);
+        bitrateSeek.setProgress(6 - 2);
+        // Intra 1..30
+        intraSeek.setMax(30 - 1);
+        intraSeek.setProgress(10 - 1);
+        // Receiver cache 80..500ms
+        cacheSeek.setMax(500 - 80);
+        cacheSeek.setProgress(Math.max(80, Math.min(500, receiverCacheMs)) - 80);
+        // MPEG-TS default true
+        mpegtsSwitch.setChecked(true);
+
+        SeekBar.OnSeekBarChangeListener listener = new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                updateSettingLabels();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                updateSettingLabels();
+            }
+        };
+
+        fpsSeek.setOnSeekBarChangeListener(listener);
+        bitrateSeek.setOnSeekBarChangeListener(listener);
+        intraSeek.setOnSeekBarChangeListener(listener);
+        cacheSeek.setOnSeekBarChangeListener(listener);
+
+        applyPiSettingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                applySettingsFromPanel();
+            }
+        });
+
+        updateSettingLabels();
+    }
+
+    private ArrayList<String> buildVlcOptions(int cacheMs) {
         ArrayList<String> options = new ArrayList<String>();
-        options.add("--network-caching=300");
-        options.add("--live-caching=300");
+        options.add("--network-caching=" + cacheMs);
+        options.add("--live-caching=" + cacheMs);
         options.add("--clock-jitter=0");
         options.add("--clock-synchro=0");
         options.add("--drop-late-frames");
         options.add("--skip-frames");
-        libVLC = new LibVLC(this, options);
-        mediaPlayer = new MediaPlayer(libVLC);
-
-        mediaPlayer.setEventListener(new MediaPlayer.EventListener() {
-            @Override
-            public void onEvent(final MediaPlayer.Event event) {
-                uiHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        handlePlayerEvent(event);
-                    }
-                });
-            }
-        });
-
-        IVLCVout vout = mediaPlayer.getVLCVout();
-        vout.setVideoView(surfaceView);
-        vout.attachViews();
-
-        enterImmersiveMode();
-        uiHandler.post(metricsUpdater);
-        uiHandler.post(pingUpdater);
-        scheduleControlsHide();
+        return options;
     }
 
     private void handlePlayerEvent(MediaPlayer.Event event) {
@@ -177,6 +312,7 @@ public class MainActivity extends Activity {
                 reconnectPending = false;
                 setUiState(true);
                 statusText.setText(R.string.status_playing);
+                applyVideoLayoutMode();
                 break;
             case MediaPlayer.Event.Stopped:
                 currentState = getString(R.string.state_stopped);
@@ -227,8 +363,8 @@ public class MainActivity extends Activity {
         try {
             Media media = new Media(libVLC, Uri.parse(url));
             media.setHWDecoderEnabled(true, false);
-            media.addOption(":network-caching=300");
-            media.addOption(":live-caching=300");
+            media.addOption(":network-caching=" + receiverCacheMs);
+            media.addOption(":live-caching=" + receiverCacheMs);
             media.addOption(":clock-jitter=0");
             media.addOption(":clock-synchro=0");
             media.addOption(":drop-late-frames");
@@ -383,6 +519,100 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void applySettingsFromPanel() {
+        receiverCacheMs = 80 + cacheSeek.getProgress();
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_CACHE_MS, receiverCacheMs).apply();
+
+        if (!userStopped && currentPlaybackUrl != null) {
+            playUrl(currentPlaybackUrl);
+        }
+
+        final int fps = 24 + fpsSeek.getProgress();
+        final int bitrateMbps = 2 + bitrateSeek.getProgress();
+        final int intra = 1 + intraSeek.getProgress();
+        final String format = mpegtsSwitch.isChecked() ? "mpegts" : "raw";
+
+        applyPiSettingsButton.setEnabled(false);
+        applyPiSettingsButton.setText(R.string.button_applying);
+
+        netExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                final boolean ok = sendPiConfig(fps, bitrateMbps * 1000000, intra, format);
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        applyPiSettingsButton.setEnabled(true);
+                        applyPiSettingsButton.setText(R.string.button_apply_pi);
+                        if (ok) {
+                            Toast.makeText(MainActivity.this, R.string.toast_pi_applied, Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(MainActivity.this, R.string.toast_pi_apply_failed, Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private boolean sendPiConfig(int fps, int bitrate, int intra, String format) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(PI_CONTROL_URL);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(1200);
+            conn.setReadTimeout(3500);
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+
+            JSONObject payload = new JSONObject();
+            payload.put("STREAM_FPS", fps);
+            payload.put("STREAM_BITRATE", bitrate);
+            payload.put("STREAM_INTRA", intra);
+            payload.put("STREAM_FORMAT", format);
+
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+            writer.write(payload.toString());
+            writer.flush();
+            writer.close();
+
+            int code = conn.getResponseCode();
+            if (code < 200 || code >= 300) {
+                return false;
+            }
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            String line;
+            StringBuilder sb = new StringBuilder();
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+
+            String response = sb.toString();
+            return response.contains("\"ok\":true") || response.contains("\"status\":\"ok\"");
+        } catch (Exception ignored) {
+            return false;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    private void updateSettingLabels() {
+        int fps = 24 + fpsSeek.getProgress();
+        int bitrate = 2 + bitrateSeek.getProgress();
+        int intra = 1 + intraSeek.getProgress();
+        int cache = 80 + cacheSeek.getProgress();
+
+        fpsValue.setText(getString(R.string.setting_fps_value, fps));
+        bitrateValue.setText(getString(R.string.setting_bitrate_value, bitrate));
+        intraValue.setText(getString(R.string.setting_intra_value, intra));
+        cacheValue.setText(getString(R.string.setting_cache_value, cache));
+    }
+
     private void setUiState(boolean playingRequested) {
         startButton.setEnabled(!playingRequested);
         stopButton.setEnabled(playingRequested);
@@ -391,7 +621,29 @@ public class MainActivity extends Activity {
     private void scheduleControlsHide() {
         uiHandler.removeCallbacks(hideControls);
         controls.setVisibility(View.VISIBLE);
-        uiHandler.postDelayed(hideControls, 3500);
+        uiHandler.postDelayed(hideControls, 4500);
+    }
+
+    private void applyVideoLayoutMode() {
+        if (mediaPlayer == null) {
+            return;
+        }
+
+        boolean fillMode = fillModeSwitch.isChecked();
+        if (fillMode) {
+            int width = getWindow().getDecorView().getWidth();
+            int height = getWindow().getDecorView().getHeight();
+            if (width <= 0 || height <= 0) {
+                DisplayMetrics dm = getResources().getDisplayMetrics();
+                width = dm.widthPixels;
+                height = dm.heightPixels;
+            }
+            mediaPlayer.setScale(0f);
+            mediaPlayer.setAspectRatio(width + ":" + height);
+        } else {
+            mediaPlayer.setAspectRatio(null);
+            mediaPlayer.setScale(0f);
+        }
     }
 
     private void enterImmersiveMode() {
@@ -419,6 +671,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         enterImmersiveMode();
+        applyVideoLayoutMode();
     }
 
     @Override
@@ -439,6 +692,7 @@ public class MainActivity extends Activity {
         uiHandler.removeCallbacks(metricsUpdater);
         uiHandler.removeCallbacks(pingUpdater);
         netExecutor.shutdownNow();
+
         if (mediaPlayer != null) {
             IVLCVout vout = mediaPlayer.getVLCVout();
             vout.detachViews();

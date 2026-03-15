@@ -29,3 +29,14 @@ adb install -r android-fpv-viewer/build-artifacts/app-debug.apk
 ```
 
 Or unzip the artifact anywhere and run: `adb install -r /path/to/app-debug.apk`
+
+
+## In-app controls
+
+- **Fill/Fit toggle**: choose full-screen crop (Fill) or fit-with-bars (Fit).
+- **Live telemetry**: state, FPS estimate, ping, lost pictures.
+- **Stop button**: stop stream cleanly.
+- **Settings panel**:
+  - receiver cache slider (app-side)
+  - sender sliders for FPS/bitrate/keyframe interval
+  - apply-to-Pi button (requires Pi control API service on `10.42.0.1:8080`)

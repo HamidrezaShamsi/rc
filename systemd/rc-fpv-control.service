@@ -1,0 +1,16 @@
+[Unit]
+Description=RC FPV stream config control API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/rc-fpv/control_server.py
+Restart=always
+RestartSec=1
+User=root
+Group=root
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
