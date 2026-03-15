@@ -38,7 +38,25 @@ jobs:
           echo "/tmp/gradle-${GRADLE_VER}/bin" >> $GITHUB_PATH
 
       - name: Build debug APK
-        run: cd android-fpv-viewer && gradle assembleDebug --no-daemon
+        run: cd android-fpv-viewer && gradle assembleDebug --no-daemon -PgithubRepo=${{ github.repository }}
+
+      - name: Get version for release tag
+        id: version
+        run: |
+          VERSION=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' android-fpv-viewer/app/build.gradle | head -1)
+          [ -z "$VERSION" ] && VERSION=1.0
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=apk-$VERSION-${{ github.run_number }}" >> $GITHUB_OUTPUT
+
+      - name: Create Release and upload APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: RC FPV Viewer ${{ steps.version.outputs.version }}
+          files: android-fpv-viewer/app/build/outputs/apk/debug/app-debug.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

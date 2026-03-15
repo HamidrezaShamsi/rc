@@ -22,6 +22,12 @@
     <string name="button_hide_settings">Hide settings</string>
     <string name="button_apply_pi">Apply to Pi</string>
     <string name="button_applying">Applying…</string>
+    <string name="button_update_app">Update app</string>
+    <string name="toast_update_checking">Checking for update…</string>
+    <string name="toast_update_downloading">Downloading update…</string>
+    <string name="toast_update_ready">Update downloaded. Open installer to install.</string>
+    <string name="toast_update_failed">Update failed. Check network and try again.</string>
+    <string name="toast_update_no_release">No release found. Build and publish a release first.</string>
 
     <string name="toggle_fill_mode">Fill screen (crop edges)</string>
 

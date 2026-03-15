@@ -108,6 +108,16 @@
                 android:text="@string/button_settings"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFFFF" />
+
+            <Button
+                android:id="@+id/update_button"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="8dp"
+                android:backgroundTint="#FF0E7A3D"
+                android:text="@string/button_update_app"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFFFF" />
         </LinearLayout>
 
         <ScrollView

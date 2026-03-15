@@ -31,6 +31,12 @@ adb install -r android-fpv-viewer/build-artifacts/app-debug.apk
 Or unzip the artifact anywhere and run: `adb install -r /path/to/app-debug.apk`
 
 
+## Update app (in-app)
+
+- **Update app** button: downloads the latest APK from this repo’s GitHub Releases and opens the system installer.
+- The workflow publishes each build as a release, so “Update app” fetches that release’s APK. Run the workflow at least once so a release exists.
+- If your repo is not `rc/rc`, build with: `-PgithubRepo=YOUR_USERNAME/rc` so the app queries the correct repo.
+
 ## In-app controls
 
 - **Fill/Fit toggle**: choose full-screen crop (Fill) or fit-with-bars (Fit).

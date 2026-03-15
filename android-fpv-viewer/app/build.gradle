@@ -6,12 +6,17 @@ android {
     namespace 'com.rc.fpvviewer'
     compileSdk 34
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId "com.rc.fpvviewer"
         minSdk 21
         targetSdk 34
         versionCode 3
         versionName "1.2"
+        buildConfigField "String", "GITHUB_REPO", "\"${project.findProperty('githubRepo') ?: 'rc/rc'}\""
     }
 
     compileOptions {
@@ -33,4 +38,5 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'org.videolan.android:libvlc-all:3.6.2'
+    implementation 'androidx.core:core:1.12.0'
 }

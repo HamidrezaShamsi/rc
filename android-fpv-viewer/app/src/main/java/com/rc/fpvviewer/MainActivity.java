@@ -2,13 +2,17 @@ package com.rc.fpvviewer;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.DhcpInfo;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.text.format.Formatter;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
@@ -29,8 +33,13 @@ import org.videolan.libvlc.Media;
 import org.videolan.libvlc.MediaPlayer;
 import org.videolan.libvlc.interfaces.IVLCVout;
 
+import androidx.core.content.FileProvider;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Field;
@@ -38,6 +47,7 @@ import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -73,6 +83,7 @@ public class MainActivity extends Activity {
     private TextView intraValue;
     private TextView cacheValue;
     private Button applyPiSettingsButton;
+    private Button updateButton;
 
     private LibVLC libVLC;
     private MediaPlayer mediaPlayer;
@@ -196,6 +207,7 @@ public class MainActivity extends Activity {
         intraValue = findViewById(R.id.intra_value);
         cacheValue = findViewById(R.id.cache_value);
         applyPiSettingsButton = findViewById(R.id.apply_pi_button);
+        updateButton = findViewById(R.id.update_button);
     }
 
     private void initButtons() {
@@ -238,6 +250,13 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_FILL_MODE, fillModeSwitch.isChecked()).apply();
                 applyVideoLayoutMode();
+            }
+        });
+
+        updateButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startUpdate();
             }
         });
     }
@@ -515,6 +534,161 @@ public class MainActivity extends Activity {
             return System.currentTimeMillis() - start;
         } catch (Exception ignored) {
             return -1;
+        }
+    }
+
+    private void startUpdate() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!getPackageManager().canRequestPackageInstalls()) {
+                Toast.makeText(this, R.string.toast_update_failed, Toast.LENGTH_SHORT).show();
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                } catch (Exception ignored) {
+                }
+                return;
+            }
+        }
+
+        updateButton.setEnabled(false);
+        Toast.makeText(this, R.string.toast_update_checking, Toast.LENGTH_SHORT).show();
+
+        netExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                final String apkUrl = fetchLatestApkUrl();
+                if (apkUrl == null) {
+                    uiHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateButton.setEnabled(true);
+                            Toast.makeText(MainActivity.this, R.string.toast_update_no_release, Toast.LENGTH_LONG).show();
+                        }
+                    });
+                    return;
+                }
+
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(MainActivity.this, R.string.toast_update_downloading, Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+                final File apkFile = downloadApk(apkUrl);
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        updateButton.setEnabled(true);
+                        if (apkFile != null && apkFile.exists()) {
+                            installApk(apkFile);
+                            Toast.makeText(MainActivity.this, R.string.toast_update_ready, Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(MainActivity.this, R.string.toast_update_failed, Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private String fetchLatestApkUrl() {
+        HttpURLConnection conn = null;
+        try {
+            String repo = BuildConfig.GITHUB_REPO;
+            if (repo == null || repo.isEmpty()) {
+                repo = "rc/rc";
+            }
+            URL url = new URL("https://api.github.com/repos/" + repo.trim() + "/releases/latest");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
+
+            int code = conn.getResponseCode();
+            if (code < 200 || code >= 300) {
+                return null;
+            }
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+
+            JSONObject json = new JSONObject(sb.toString());
+            if (!json.has("assets")) {
+                return null;
+            }
+            org.json.JSONArray assets = json.getJSONArray("assets");
+            for (int i = 0; i < assets.length(); i++) {
+                JSONObject asset = assets.getJSONObject(i);
+                String name = asset.optString("name", "");
+                if (name.endsWith(".apk")) {
+                    return asset.optString("browser_download_url", null);
+                }
+            }
+            return null;
+        } catch (Exception ignored) {
+            return null;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    private File downloadApk(String apkUrl) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(apkUrl);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(20000);
+            conn.setReadTimeout(60000);
+
+            int code = conn.getResponseCode();
+            if (code < 200 || code >= 300) {
+                return null;
+            }
+
+            File cacheDir = getCacheDir();
+            File apkFile = new File(cacheDir, "update.apk");
+
+            InputStream in = conn.getInputStream();
+            FileOutputStream out = new FileOutputStream(apkFile);
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) != -1) {
+                out.write(buf, 0, n);
+            }
+            out.flush();
+            out.close();
+            in.close();
+
+            return apkFile;
+        } catch (Exception ignored) {
+            return null;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    private void installApk(File apkFile) {
+        try {
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", apkFile);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception ignored) {
         }
     }
 
