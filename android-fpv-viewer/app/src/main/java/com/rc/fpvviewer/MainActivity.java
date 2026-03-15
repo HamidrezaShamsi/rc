@@ -314,7 +314,7 @@ public class MainActivity extends Activity {
 
     private Object getMediaStats() {
         try {
-            Media media = mediaPlayer.getMedia();
+            Object media = mediaPlayer.getMedia();
             if (media == null) {
                 return null;
             }
